@@ -1320,11 +1320,10 @@ function drawCraftPanel() {
     const prog = CRAFT_PROG[r.id] || 0;
     const autoing = autoCraft.recipe === r.id;
     if (autoing || prog > 0) {
-      // 自动制作中：恒显整排格子（完成金格，新一轮为整排空格）；手动进行中：只显已完成格
-      const shown = autoing ? hits : prog;
+      // 制作中恒显整排格子（手动/自动一致）：已完成金格，未完成为空格
       const gw = 150, gh = 10, gx = c.x + 62, gy = y + 64;
       const cw = (gw - (hits - 1) * 3) / hits;
-      for (let gi = 0; gi < shown; gi++) {
+      for (let gi = 0; gi < hits; gi++) {
         ctx.fillStyle = gi < prog ? '#e0a53f' : '#c4bdae';
         rr(gx + gi * (cw + 3), gy, cw, gh, 3); ctx.fill();
       }
