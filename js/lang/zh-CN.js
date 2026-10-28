@@ -123,7 +123,6 @@ LANG_PACK['zh-CN'] = {
 
   resbar: {
     title: '物品栏',
-    note: '顶栏只显示数量大于 0 的物品，最多两行。在这里调整显示与排序。',
     shown: '显示',
     hidden: '隐藏',
     done: '完成',

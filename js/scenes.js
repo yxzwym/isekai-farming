@@ -252,8 +252,7 @@ function drawSettingsContent() {
 // ===== 物品栏显示设置 =====
 function drawResBarPanel() {
   const c = drawPanelBase(t('resbar.title'), 'resbar');
-  let y = c.y + 4;
-  y += drawWrapped(t('resbar.note'), c.x, y, c.w, 22, '#8a8171', 13, false) + 16;
+  let y = c.y + 8;
   const ord = resBarOrder();
   ord.forEach((id, i) => {
     const hidden = settings.resBarHidden.includes(id);

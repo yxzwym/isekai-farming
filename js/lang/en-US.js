@@ -122,7 +122,6 @@ LANG_PACK['en-US'] = {
 
   resbar: {
     title: 'Item Bar',
-    note: 'Only items with a count above 0 show at the top, two rows at most. Toggle and reorder them here.',
     shown: 'Show',
     hidden: 'Hide',
     done: 'Done',
