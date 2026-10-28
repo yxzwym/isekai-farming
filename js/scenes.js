@@ -491,7 +491,7 @@ function renderGame() {
     // 采集血条（受损时显示分段格）
     const maxH = nodeHitsMax(n.id);
     if (maxH > 1) {
-      const cur = state.nodeHp[n.k] || 0;
+      const cur = nodeHp[n.k] || 0;
       if (cur > 0) {
         const cw = 16, gap = 4, h = 8;
         const w = maxH * cw + (maxH - 1) * gap;

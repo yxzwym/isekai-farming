@@ -23,7 +23,6 @@ function defaultState() {
     equip: { weapon: null, armor: null }, // 装备槽：武器一格、盔甲一格
     gearDur: {},                          // 装备剩余耐久，按物品 id 存储
     dur: {},                              // 在用工具的剩余耐久 { wood_axe: n, ... }
-    nodeHp: {},                           // 采集节点当前血量 { 按采集点实例 k 存储 }
     builds: [],                           // 已建成建筑 [{ t, node?, recipe?, busy }]
     map: 'plains',                        // 当前地图 id（MAPS 表）
     seen: {},                             // 曾拥有过（数量 > 0 过）的物品；仓库只展示这些
@@ -125,7 +124,6 @@ function loadState() {
       delete out.gearDur[slot];
     }
     out.dur = s.dur || {};
-    out.nodeHp = s.nodeHp || {};
     // 建筑列表：剔掉未知类型/非法指派；进度截断到该建筑一轮的时长内
     out.builds = Array.isArray(s.builds) ? s.builds.filter(b => b && BUILDINGS[b.t]) : [];
     for (const b of out.builds) {
@@ -425,6 +423,8 @@ function useTool(id) {
   }
 }
 // 节点采集进度：正向计数（1/N … N/N），满格收获并清零进入下一轮
+// 临时进度，不入存档：切地图即清，重开游戏从头攒
+const nodeHp = {}; // { 采集点实例 k: 已推进格数 }
 let lastNeedToolAt = 0;
 function doGather(node) {
   if (dialog.active || battle.active) return;
@@ -444,9 +444,9 @@ function doGather(node) {
   const maxH = nodeHitsMax(id);
   if (!maxH) return;
   nodeAnim[id] = 1;
-  const np = (state.nodeHp[node.k] || 0) + 1;
-  if (np < maxH) { state.nodeHp[node.k] = np; markDirty(); return; }
-  state.nodeHp[node.k] = 0;
+  const np = (nodeHp[node.k] || 0) + 1;
+  if (np < maxH) { nodeHp[node.k] = np; return; }
+  nodeHp[node.k] = 0;
   const tool = activeTool(id);
   if (tool && !takeTool(tool)) return;
   const y = gatherYield(id);
@@ -480,10 +480,15 @@ const NODE_FLOAT_COLORS = {
 };
 
 // ===== 制作：点击推进制作条（纯进度，不保存）；做满一次才扣除材料并产出 =====
-const CRAFT_PROG = {}; // { 配方id: 已推进次数 } 不入存档，换配方/退出页面即清
+// 进度临时保存：换做别的东西、关掉制作面板就清空，重攒
+const CRAFT_PROG = {}; // { 配方id: 已推进次数 }
+let lastCraftId = null; // 上一次手搓的配方 id，用于检测切换制造目标
+function clearCraftProg() { for (const k in CRAFT_PROG) delete CRAFT_PROG[k]; lastCraftId = null; }
 function craftHits(r) { return CRAFT_HITS[r.id] || 1; }
 function doCraftClick(r) {
   if (!recipeUnlocked(r)) return false;
+  if (lastCraftId && lastCraftId !== r.id) clearCraftProg(); // 换了制造目标，之前的进度不要了
+  lastCraftId = r.id;
   const out = r.out;
   // 主产物与副产物都要放得下才开工
   if (!recipeOutputsFit(r)) { warnStorageFull(recipeFullItems(r)); return false; }
@@ -572,6 +577,7 @@ function stationJobReady(b) {
 function switchMap(id) {
   if (!MAPS[id] || state.map === id) return false;
   state.map = id;
+  for (const k in nodeHp) delete nodeHp[k]; // 采集进度是临时的，换图即清
   markDirty();
   return true;
 }
@@ -1144,4 +1150,5 @@ function backToMenu() {
 function closePanel() {
   panelOpen = null;
   assignPick = null; mapPick = false; invPick = false; // 面板关掉时连弹窗一起收干净
+  clearCraftProg(); // 手搓进度是临时的，页面一关就清
 }

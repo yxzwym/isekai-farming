@@ -370,7 +370,10 @@ LANG_PACK['en-US'] = {
     'chop-wood': {
       name: 'Timber',
       desc: 'Chop the tree and gather 10 wood.',
-      intro: [],
+      intro: [
+        'Ten wood is a lot of tapping. Here is a trick to save you the effort: press and hold on a resource node to turn on auto-gathering—it keeps going on its own.',
+        { who: 'you', text: 'Hold and it just works? Even this other world automates tree-chopping. My last company still made me compile spreadsheets by hand.' },
+      ],
       done: [
         'Wood and leaves—enough for a few wooden tools.',
         'Start with a wood axe; chopping will be much faster.',
@@ -380,7 +383,10 @@ LANG_PACK['en-US'] = {
     'craft-woodaxe': {
       name: 'An Axe of Wood',
       desc: 'Make 1 Wood Axe.',
-      intro: [],
+      intro: [
+        'Once your materials are ready, you can get to work. One more trick: press and hold the craft button to turn on auto-crafting—as long as materials hold out, it keeps producing.',
+        { who: 'you', text: 'An assembly line, got it. I just hope it never puts me on a KPI—or I will be the next one optimized away.' },
+      ],
       done: [
         'An axe makes a difference.',
         'Fair warning: tools are consumables. They break, and then they are gone—keep materials ready and craft a new one.',
