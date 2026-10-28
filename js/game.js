@@ -946,7 +946,6 @@ function enemyCounter() {
   const e = ENEMIES[battle.id];
   const back = Math.max(1, e.atk - defVal());
   battle.php -= back;
-  state.stamina = Math.max(0, state.stamina - STAMINA.cost); // 挨打同样耗耐力：攻防一回合一扣
   battle.pflash = 0.35;
   battle.floats.push({ text: '-' + back, x: 240, y: 408, t: 0, life: 0.8, color: '#e05a4e' });
   useGearDur('armor');
