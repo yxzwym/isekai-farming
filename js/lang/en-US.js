@@ -202,7 +202,6 @@ LANG_PACK['en-US'] = {
   map: {
     pick: 'Switch Map',
     plains: 'Starter Plateau',
-    locked: 'Locked',
   },
 
   inv: {

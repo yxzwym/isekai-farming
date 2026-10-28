@@ -426,22 +426,9 @@ function renderGame() {
   ctx.restore();
   // 注意：任务追踪条的点击注册放在节点注册之后（见下方），保证追踪条永远可点
 
-  // 采集节点（按进度逐步出现；未解锁的画剪影，让玩家知道地图上还有哪些资源/动物）
+  // 采集节点（按进度逐步出现；未解锁的完全不展示）
   for (const n of NODES) {
-    if (!n.show()) {
-      ctx.save();
-      ctx.translate(n.x, n.y);
-      ctx.globalAlpha = 0.28;
-      if (n.id === 'bush') drawBush(0, 0);
-      else if (n.id === 'tree') drawTree(0, 0, 1);
-      else if (n.id === 'stone') drawRock(0, 0);
-      else if (n.id === 'iron') drawIronNode(0, 0);
-      else if (n.id === 'rabbit') drawRabbit(0, 0);
-      else if (n.id === 'goat') drawGoat(0, 0, 1);
-      else drawBoar(0, 0);
-      ctx.restore();
-      continue;
-    }
+    if (!n.show()) continue;
     const a = nodeAnim[n.id] || 0;
     const s = 1 + a * 0.1;
     // 长按计时时快速抖动（触发自动采集后停止）
@@ -474,18 +461,7 @@ function renderGame() {
   // 名牌与采集血条：统一画在所有节点之上，避免相邻节点（如铁矿）遮挡
   // 先画完全部名牌、再画全部血条：血条优先于名牌展示，挖矿进度不被相邻节点名牌盖住
   for (const n of NODES) {
-    // 未解锁：灰名牌「名称 · 未解锁」
-    if (!n.show()) {
-      const label = t('node.' + n.id + '.name') + ' · ' + t('map.locked');
-      font(12, true);
-      const lw = ctx.measureText(label).width + 20;
-      ctx.fillStyle = 'rgba(30,50,34,.35)';
-      rr(n.x - lw / 2, n.y + n.r * 0.62, lw, 24, 12); ctx.fill();
-      ctx.fillStyle = 'rgba(234,244,228,.7)';
-      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-      ctx.fillText(label, n.x, n.y + n.r * 0.62 + 13);
-      continue;
-    }
+    if (!n.show()) continue;
     const label = t('node.' + n.id + '.name');
     font(13, true);
     const lw = ctx.measureText(label).width + 20;
