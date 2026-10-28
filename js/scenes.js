@@ -425,9 +425,22 @@ function renderGame() {
   ctx.restore();
   // 注意：任务追踪条的点击注册放在节点注册之后（见下方），保证追踪条永远可点
 
-  // 采集节点（按进度逐步出现）
+  // 采集节点（按进度逐步出现；未解锁的画剪影，让玩家知道地图上还有哪些资源/动物）
   for (const n of NODES) {
-    if (!n.show()) continue;
+    if (!n.show()) {
+      ctx.save();
+      ctx.translate(n.x, n.y);
+      ctx.globalAlpha = 0.28;
+      if (n.id === 'bush') drawBush(0, 0);
+      else if (n.id === 'tree') drawTree(0, 0, 1);
+      else if (n.id === 'stone') drawRock(0, 0);
+      else if (n.id === 'iron') drawIronNode(0, 0);
+      else if (n.id === 'rabbit') drawRabbit(0, 0);
+      else if (n.id === 'goat') drawGoat(0, 0, 1);
+      else drawBoar(0, 0);
+      ctx.restore();
+      continue;
+    }
     const a = nodeAnim[n.id] || 0;
     const s = 1 + a * 0.1;
     // 长按计时时快速抖动（触发自动采集后停止）
@@ -460,15 +473,39 @@ function renderGame() {
   // 名牌与采集血条：统一画在所有节点之上，避免相邻节点（如铁矿）遮挡
   // 先画完全部名牌、再画全部血条：血条优先于名牌展示，挖矿进度不被相邻节点名牌盖住
   for (const n of NODES) {
-    if (!n.show()) continue;
+    // 未解锁：灰名牌「名称 · 未解锁」
+    if (!n.show()) {
+      const label = t('node.' + n.id + '.name') + ' · ' + t('map.locked');
+      font(12, true);
+      const lw = ctx.measureText(label).width + 20;
+      ctx.fillStyle = 'rgba(30,50,34,.35)';
+      rr(n.x - lw / 2, n.y + n.r * 0.62, lw, 24, 12); ctx.fill();
+      ctx.fillStyle = 'rgba(234,244,228,.7)';
+      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.fillText(label, n.x, n.y + n.r * 0.62 + 13);
+      continue;
+    }
     const label = t('node.' + n.id + '.name');
     font(13, true);
     const lw = ctx.measureText(label).width + 20;
+    // 采集点第二行：采集站使用量（已指派/点位总数），与建筑面板口径一致
+    let sub = null, used = 0;
+    if (n.action === 'gather') {
+      const total = Object.values(HARVEST_SITES).filter(v => v === n.k).length;
+      used = state.builds.filter(b => b.t === 'harvester' && b.node && HARVEST_SITES[b.node] === n.k).length;
+      sub = tf('map.usage', { n: used, m: total });
+    }
+    const ph = sub ? 42 : 24;
     ctx.fillStyle = 'rgba(30,50,34,.55)';
-    rr(n.x - lw / 2, n.y + n.r * 0.62, lw, 24, 12); ctx.fill();
+    rr(n.x - lw / 2, n.y + n.r * 0.62, lw, ph, 12); ctx.fill();
     ctx.fillStyle = '#eaf4e4';
     ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-    ctx.fillText(label, n.x, n.y + n.r * 0.62 + 13);
+    ctx.fillText(label, n.x, n.y + n.r * 0.62 + (sub ? 14 : 13));
+    if (sub) {
+      font(11, true);
+      ctx.fillStyle = used > 0 ? '#9fe08a' : 'rgba(234,244,228,.55)';
+      ctx.fillText(sub, n.x, n.y + n.r * 0.62 + 30);
+    }
   }
   for (const n of NODES) {
     if (!n.show()) continue;
@@ -1708,7 +1745,7 @@ function drawFactoryPanel() {
     // 组内成员：每台一行，右上角拆除；行点击轮换该台任务（含关机档）
     list.forEach((b, li) => {
       const gi = state.builds.indexOf(b);
-      let jobText = '', blocked = false, cycle = def.time || 30, pct = 0, barColor = '#7fb069', chipIds = null, jobIcon = null, rowH = 42;
+      let jobText = '', blocked = false, cycle = def.time || 30, pct = 0, barColor = '#7fb069', chipIds = null, jobIcon = null, rowH = 52;
       const isCrankRow = bt === 'hand_crank';
       if (!def.use) {
         if (bt === 'hand_crank') {
@@ -1740,7 +1777,7 @@ function drawFactoryPanel() {
             blocked = true;
             chipIds = null;
             jobIcon = null;
-            rowH = 42;
+            rowH = 52;
             jobText = t('factory.full') + '：' + fullKeys.map(k => t('item.' + k + '.name')).join(t('ui.listSep'));
           }
         }
@@ -1761,7 +1798,7 @@ function drawFactoryPanel() {
           if (blocked) {
             chipIds = null;
             jobIcon = null;
-            rowH = 42;
+            rowH = 52;
             jobText = t('factory.full') + '：' + t('item.' + r.out + '.name') + ' ' + (state.inv[r.out] || 0) + '/' + capOf(r.out);
           }
         } else jobText = t('factory.off');
@@ -1771,11 +1808,11 @@ function drawFactoryPanel() {
       font(14, true); ctx.fillStyle = blocked ? '#c0392b' : '#3c3c30';
       ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
       ctx.fillText(t('factory.bld.' + bt + '.name') + (owned > 1 ? ' #' + (li + 1) : ''), c.x + 24, y + 14);
-      // 任务区（rowH>42）：任务单行（图标+名称 #N · 时长），与标题、下方卡片的间距一致；紧凑行单行
+      // 任务区：任务单行（图标+名称 #N · 时长）；紧凑行同款间距（标题 y+14 → 任务 y+37）
       const jobX = c.x + (jobIcon ? 42 : 24);
       if (jobIcon && rowH > 42) drawIcon(jobIcon, c.x + 31, y + 37, 14);
       font(12, false); ctx.fillStyle = blocked ? '#c0392b' : '#8a8171';
-      ctx.fillText(jobText, jobX, y + (rowH > 42 ? 37 : 29));
+      ctx.fillText(jobText, jobX, y + 37);
       // 产出卡横排（换行展示，含 1 分钟预期速率）
       if (chipIds && !blocked) drawStockChips(c.x + 24, y + 52, chipIds);
       // 底部进度条：贴底通栏、被卡片圆角裁剪（等价 CSS 的 overflow hidden 底栏）
@@ -1793,8 +1830,8 @@ function drawFactoryPanel() {
       const sc2 = c.key ? (PANEL_SCROLLS[c.key] || 0) : 0;
       const rowVis = y + rowH > c.y + sc2 && y < c.y + c.h + sc2 + 6; // 滚出可视区：不画按钮、不注册命中（含滚动偏移）
       if (!busyPanel() && rowVis && def.use) reg(c.x + 10, y, c.w - 10, rowH, () => cycleAssign(gi)); // 整行可点切换，先注册让按钮/拆除优先命中
-      // 高行（带横排产出卡）按钮锚定顶部，与下方卡片行完全错开；紧凑行保持垂直居中
-      const midY = rowH > 42 ? y + 23 : y + rowH / 2;
+      // 按钮锚定行顶部（y+23），与下方产出卡完全错开
+      const midY = y + 23;
       if (isCrankRow) {
         if (rowVis) uiButton(c.x + c.w - 128, y + 5, 66, 28, t('factory.crank'), crankClick, { kind: 'primary', size: 13 });
       } else if (def.use) {

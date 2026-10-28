@@ -203,6 +203,8 @@ LANG_PACK['zh-CN'] = {
   map: {
     pick: '切换地图',
     plains: '初始台地',
+    usage: '采集站 {n}/{m}',
+    locked: '未解锁',
   },
 
   inv: {
