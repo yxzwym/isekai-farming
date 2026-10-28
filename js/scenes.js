@@ -252,7 +252,8 @@ function drawSettingsContent() {
 // ===== 物品栏显示设置 =====
 function drawResBarPanel() {
   const c = drawPanelBase(t('resbar.title'), 'resbar');
-  let y = c.y + 8;
+  let y = c.y + 4;
+  y += drawWrapped(t('resbar.note'), c.x, y, c.w, 22, '#8a8171', 13, false) + 16;
   const ord = resBarOrder();
   ord.forEach((id, i) => {
     const hidden = settings.resBarHidden.includes(id);
@@ -632,8 +633,6 @@ function renderGame() {
     font(17, true); ctx.fillStyle = '#3c3c30';
     ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
     ctx.fillText(t('inv.title'), px + pw / 2, py + 26);
-    font(12, false); ctx.fillStyle = '#a89f8c';
-    ctx.fillText(t('inv.pinHint'), px + pw / 2, py + 48);
     // 右上角关闭按钮（与任务/制作面板同款）
     ctx.fillStyle = '#eee7d4'; rr(px + pw - 48, py + 12, 32, 32, 10); ctx.fill();
     ctx.fillStyle = '#8a8171'; font(17, true);
