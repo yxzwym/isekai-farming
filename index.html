@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>异世界种田</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<canvas id="game"></canvas>
+<script>window.__errors=[];window.addEventListener('error',function(e){window.__errors.push(e.message);});</script>
+<script>
+// 开发期：资源地址带时间戳，避免浏览器缓存旧文件
+(function () {
+  var files = ['js/i18n.js', 'js/lang/zh-CN.js', 'js/lang/en-US.js', 'js/data.js', 'js/game.js', 'js/ui.js', 'js/scenes.js', 'js/main.js'];
+  for (var i = 0; i < files.length; i++) {
+    document.write('<script src="' + files[i] + '?v=' + Date.now() + '"></scr' + 'ipt>');
+  }
+})();
+</script>
+</body>
+</html>
