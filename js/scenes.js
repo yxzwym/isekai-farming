@@ -488,12 +488,12 @@ function renderGame() {
     const label = t('node.' + n.id + '.name');
     font(13, true);
     const lw = ctx.measureText(label).width + 20;
-    // 采集点第二行：采集站使用量（已指派/点位总数），与建筑面板口径一致
+    // 采集点第二行：采集站使用量（已指派/点位总数），造出采集站后才显示（前期新手不展示）
     let sub = null, used = 0;
-    if (n.action === 'gather') {
+    if (n.action === 'gather' && state.builds.some(b => b.t === 'harvester')) {
       const total = Object.values(HARVEST_SITES).filter(v => v === n.k).length;
       used = state.builds.filter(b => b.t === 'harvester' && b.node && HARVEST_SITES[b.node] === n.k).length;
-      sub = tf('map.usage', { n: used, m: total });
+      sub = used + '/' + total;
     }
     const ph = sub ? 42 : 24;
     ctx.fillStyle = 'rgba(30,50,34,.55)';
