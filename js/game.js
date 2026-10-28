@@ -744,7 +744,7 @@ function factoryTick(dt) {
 }
 
 // ===== 食物食用：装填即生效，不预扣库存；每场战斗结束后扣 1 份 =====
-// 血量加成是即时光环：装填当下兑现到当前血量（5/10 装浆果 → 10/15），卸下/耗尽同步撤回
+// 血量加成是即时光环：装填当下兑现到当前血量，卸下/耗尽同步撤回
 function applyFoodHp(food, sign) {
   const g = (FOODS[food] && FOODS[food].hp) || 0;
   if (!g) return;
@@ -771,7 +771,7 @@ function doEquipFood(food) {
   // 装填不预扣库存：数量显示与背包一致，战斗结束才真正消耗（与武器盔甲同一套逻辑）
   state.foodSlots[i] = food;
   applyFoodHp(food, 1);  // 血量加成战前即时兑现
-  applyFoodStam(food, 1); // 耐力加成即时兑现（装浆果 50 → 60）
+  applyFoodStam(food, 1); // 耐力加成即时兑现
   state.counters.equipped++;
   syncReadyVitals(); // 备战时换装：血量上限变了，重跑自动用药并同步血条
   markDirty();
@@ -787,8 +787,8 @@ function doUnequipFood(i) {
   const f = state.foodSlots[i];
   if (!f) return;
   state.foodSlots[i] = null; // 卸下只是取消加成，不增减库存
-  applyFoodHp(f, -1);   // 血量加成同步撤回（10/15 卸下 → 5/10）
-  applyFoodStam(f, -1); // 耐力加成同步撤回（60 满卸浆果 → 50 仍满）
+  applyFoodHp(f, -1);   // 血量加成同步撤回
+  applyFoodStam(f, -1); // 耐力加成同步撤回
   syncReadyVitals();
   markDirty();
 }

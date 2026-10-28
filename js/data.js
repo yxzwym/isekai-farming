@@ -10,7 +10,7 @@ const SAVE_KEY = 'isekai-farming-save-v10';
 const SETTINGS_KEY = 'isekai-farming-settings-v1';
 
 // 基础属性：没有等级；食物/装备在其上加成
-const BASE = { hp: 25, mp: 0, atk: 1, def: 0 };
+const BASE = { hp: 20, mp: 0, atk: 1, def: 0 };
 
 // 耐力：每次攻击消耗，不足时该次伤害减半；打完一场战斗直接回满
 const STAMINA = { max: 50, cost: 10 };
@@ -113,10 +113,11 @@ const DURABILITY = {
 };
 
 // ===== 食物：只有熟食可以食用；食用后生效，每场战斗消耗 1 份 =====
+// 平衡定位：肉血多耐少，植物血少耐多——野猪/山羊战需要肉凑血、浆果凑耐力
 const FOODS = {
-  berry:         { hp: 5,  stam: 10 },
-  cooked_rabbit: { hp: 15, stam: 4 },
-  cooked_pork:   { hp: 20, stam: 3 },
+  berry:         { hp: 4,  stam: 15 },
+  cooked_rabbit: { hp: 18, stam: 5 },
+  cooked_pork:   { hp: 23, stam: 5 },
 };
 
 // ===== 配方（只消耗原材料；unlock = 需已完成的任务 id，null = 初始可用）
