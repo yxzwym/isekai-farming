@@ -251,7 +251,7 @@ function drawSettingsContent() {
 
 // ===== 物品栏显示设置 =====
 function drawResBarPanel() {
-  const c = drawPanelBase(t('resbar.title'));
+  const c = drawPanelBase(t('resbar.title'), 'resbar');
   let y = c.y + 4;
   y += drawWrapped(t('resbar.note'), c.x, y, c.w, 22, '#8a8171', 13, false) + 16;
   const ord = resBarOrder();
@@ -283,10 +283,11 @@ function drawResBarPanel() {
         settings.resBarOrder = o;
         saveSettings();
       }
-    }, { kind: 'ghost', size: 16, disabled: i === o.length - 1 });
+    }, { kind: 'ghost', size: 16, disabled: i === ord.length - 1 });
     y += 48;
   });
   uiButton(c.x + 92, y + 12, 200, 52, t('resbar.done'), () => { panelOpen = null; }, { kind: 'primary', size: 17 });
+  endPanel('resbar', y + 76);
 }
 
 // ============================================================
