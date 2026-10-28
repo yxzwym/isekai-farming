@@ -359,14 +359,16 @@ function renderGame() {
     ctx.fillText(t('map.' + state.map), 50, 29);
     if (!busy) reg(8, 8, 148, 40, () => { mapPick = true; });
   }
-  // 右上：仓库统计（图标 + 名称 + 总量/总上限），点击弹窗查看全部物品
-  const tot = storageTotals();
-  ctx.fillStyle = 'rgba(255,255,255,.82)'; rr(GAME_W - 172, 8, 120, 40, 12); ctx.fill();
-  drawIcon('warehouse', GAME_W - 156, 28, 24);
-  font(13, true); ctx.fillStyle = '#4a4438';
-  ctx.fillText(t('inv.warehouse'), GAME_W - 138, 21);
-  ctx.fillText(tot.have + '/' + tot.cap, GAME_W - 138, 38);
-  if (!busy) reg(GAME_W - 172, 8, 120, 40, () => { invPick = true; });
+  // 右上：仓库芯片（图标 + 名称，不显示数量），点击弹窗查看全部物品
+  // 宽度按文字自适应；对齐方式显式声明，避免继承上一帧的 textAlign 造成图标与文字重叠
+  ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+  font(13, true);
+  const ww = 44 + ctx.measureText(t('inv.warehouse')).width + 14;
+  ctx.fillStyle = 'rgba(255,255,255,.82)'; rr(GAME_W - ww, 8, ww, 40, 12); ctx.fill();
+  drawIcon('warehouse', GAME_W - ww + 24, 28, 24);
+  ctx.fillStyle = '#4a4438';
+  ctx.fillText(t('inv.warehouse'), GAME_W - ww + 44, 29);
+  if (!busy) reg(GAME_W - ww, 8, ww, 40, () => { invPick = true; });
   // 右上角：设置齿轮（仓库右侧），直达设置面板
   ctx.fillStyle = 'rgba(255,255,255,.82)'; rr(GAME_W - 44, 8, 36, 40, 12); ctx.fill();
   drawIcon('gear', GAME_W - 26, 28, 26);

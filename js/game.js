@@ -575,12 +575,6 @@ function switchMap(id) {
   markDirty();
   return true;
 }
-// 仓库总量：所有物品的当前存量 / 总上限（右上角统计用）
-function storageTotals() {
-  let have = 0, cap = 0;
-  for (const id in ITEMS) { have += state.inv[id] || 0; cap += capOf(id); }
-  return { have, cap };
-}
 // 物品名字的稀有度颜色（未登记的按常见灰处理）
 function rarityColor(id) {
   const r = RARITY[id];
