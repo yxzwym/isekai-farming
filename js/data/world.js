@@ -16,7 +16,7 @@ const BUILDINGS = {
   manufacturer: { use: 6,  cost: { wood: 5, iron_rod: 5, iron_plate: 5 } },
   assembler:    { use: 12, cost: { wood: 5, iron_plate: 5, gear: 3 } },
   coal_kiln:    { use: 6,  research: 'coal_kiln', map: 'dark_forest', cost: { stone: 15, wood: 10 } }, // 煤窑：木头→煤+灰烬；近煤供料，只能造在黑暗森林
-  steam_engine: { gen: 36, research: 'steam_engine', map: 'plains', burn: { coal: 1 }, time: 40, cost: { stone: 20, iron_plate: 8, gear: 4, cable: 4 } }, // 蒸汽机：36电力=2×水车，烧煤；电力与应力同池结算（应力是前期形态）
+  steam_engine: { gen: 36, research: 'steam_engine', map: 'plains', mapWhy: 'water', burn: { coal: 1 }, time: 40, cost: { stone: 20, iron_plate: 8, gear: 4, cable: 4 } }, // 蒸汽机：36应力/分=2×水车，烧煤（有 time 字段＝出应力；生物质发电机无 time＝出电力）；电力与应力独立结算，电力设备后续开放
   biomass_generator: { gen: 45, research: 'power', burn: { leaf: 9, wood: 18, biomass: 45 }, cost: { copper_plate: 4, iron_plate: 6, cable: 2 } }, // 生物质发电机：烧树叶/木材/生物质（任意一种点亮）；生物质能量+25%
   warehouse:    { storage: 30, max: 3, cost: { concrete: 4, iron_plate: 4, wood: 8 } }, // 仓库：每座全体物品堆叠上限 +30（科研「仓储扩容」解锁）
   space_elevator: { locked: true, max: 1, cost: { wood: 60, stone: 50, iron_rod: 30, iron_plate: 25, gear: 12 } }, // 主线目标：配方与造价后续再定，暂不开放建造

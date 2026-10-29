@@ -24,25 +24,25 @@ function stressSupply() {
     if (b.map !== state.map) continue; // 应力按地图结算：各图的供需互不干涉
     if (b.t === 'wind_turbine') continue; // 风力带群体加成，单独结算
     const def = BUILDINGS[b.t];
-    if (def.burn) continue; // 燃烧发电类（蒸汽机/生物质发电机）归电力栏，单独统计
+    if (def.burn && !def.time) continue; // 燃烧电力类（生物质发电机）归电力栏；烧煤的蒸汽机（def.time）出应力
+    if (def.burn && !(b.burnLeft > 0)) continue; // 蒸汽机灭火（没燃料）时不供
     n += def.gen || 0;
   }
   return n + windStress();
 }
-// 电力部分：真正的电力（MW）——蒸汽机与生物质发电机等燃烧发电建筑，燃着才供
-// 与应力等效、共用同一条动力线：需求对合并后的总供给结算
+// 电力部分：真正的电力（MW）——生物质发电机等多燃料燃烧建筑，燃着才供
+// 电力与应力是两套独立资源：现有采集/制造站全吃应力；电力留给后续的电气设备
 function powerSupply() {
   let n = 0;
   for (const b of state.builds) {
     if (b.map !== state.map) continue;
     const def = BUILDINGS[b.t];
-    if (!def.burn || !def.gen) continue;
+    if (!def.burn || def.time || !def.gen) continue; // 蒸汽机（def.time）出应力，不算电力
     if (!(b.burnLeft > 0)) continue;
     n += def.gen;
   }
   return n;
 }
-function totalSupply() { return stressSupply() + powerSupply(); }
 function stressDemand() {
   let n = 0;
   for (const b of state.builds) {
@@ -55,7 +55,7 @@ function stressDemand() {
   }
   return n;
 }
-function stressOver() { return stressDemand() > totalSupply(); }
+function stressOver() { return stressDemand() > stressSupply(); } // 只对应力池结算：电力替代不了应力
 
 // 生产站的待命判定：有任务、材料够、仓库放得下——三者齐了就随时开工
 function stationJobReady(b) {
@@ -196,6 +196,7 @@ function buildFactory(bt) {
   }
   for (const k in BUILDINGS[bt].cost) state.inv[k] -= BUILDINGS[bt].cost[k];
   const b = { t: bt, map: state.map, busy: 0, burnLeft: 0 };
+  if (BUILDINGS[bt].burn && !BUILDINGS[bt].time) b.fuel = null; // 多燃料发电机：默认自动按次序烧
   if (BUILDINGS[bt].use) {
     if (bt === 'harvester') b.node = null;
     else b.recipe = null;
@@ -241,14 +242,17 @@ function burnTick(dt) {
       for (const k in def.burn) if ((state.inv[k] || 0) < def.burn[k]) { ok = false; break; }
       if (ok) {
         for (const k in def.burn) state.inv[k] -= def.burn[k];
+        b.curFuel = Object.keys(def.burn)[0]; // 记录本轮烧的是什么：进度条按时长归一化用
         b.burnLeft = def.time + Math.max(0, b.burnLeft); // 补上燃尽瞬间剩余的小数尾巴
       }
-    } else { // 多燃料发电机：按次序找一种背包里有的燃料点燃
+    } else { // 多燃料发电机：指定燃料优先（选择弹窗指派），未指定按次序找背包里有的点燃
       let pick = null;
-      for (const k in def.burn) if ((state.inv[k] || 0) >= 1) { pick = k; break; }
+      if (b.fuel && (state.inv[b.fuel] || 0) >= 1) pick = b.fuel;
+      else for (const k in def.burn) if ((state.inv[k] || 0) >= 1) { pick = k; break; }
       ok = !!pick;
       if (ok) {
         state.inv[pick]--;
+        b.curFuel = pick;
         b.burnLeft = def.burn[pick] + Math.max(0, b.burnLeft);
       }
     }

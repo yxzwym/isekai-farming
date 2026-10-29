@@ -21,9 +21,9 @@ function drawBattle() {
   const iw = pw - 48;
 
   // ---- 敌人区 ----
+  // 怪物先画、名字后画：标题 UI 永远盖在怪物之上（高个子如树精允许越线，但不得遮字）
   ctx.fillStyle = '#3c3c30'; font(19, true);
   ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-  ctx.fillText(t('enemy.' + battle.id + '.name'), cx, py + 36);
   const shake = nodeAnim[battle.id] || 0;
   ctx.save();
   ctx.translate(cx + Math.sin(performance.now() / 16) * 5 * shake, py + 130 + (dead ? 8 : 0));
@@ -32,6 +32,8 @@ function drawBattle() {
   (ENEMY_DRAW[battle.id] || drawBeast)(0, 0, 1.6);
   ctx.globalAlpha = 1;
   ctx.restore();
+  ctx.fillStyle = '#3c3c30'; // 怪物绘制会改填充色，画名字前重设
+  ctx.fillText(t('enemy.' + battle.id + '.name'), cx, py + 36);
   drawBarRow(ix, py + 230, barW, 14, t('stat.hp'),
     Math.max(0, battle.ehp) / e.hp, '#e05a4e',
     Math.max(0, battle.ehp) + ' / ' + e.hp);

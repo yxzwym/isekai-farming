@@ -75,9 +75,9 @@ function renderGame() {
       while (fs > 8 && ctx.measureText(label).width > cellW - 4) { fs--; font(fs, true); }
       ctx.fillStyle = rarityColor(id); ctx.textAlign = 'center';
       ctx.fillText(label, x + cellW / 2, 88);
-      // 数量：当前/上限；满/超上限红、≥90% 警告色（配色与 K/M 格式化统一在 ui.js）
+      // 数量：只显示当前数量；满/超上限红、≥90% 警告色（配色统一在 ui.js）
       const cur = state.inv[id] || 0, cap = capOf(id);
-      const num = fmt(cur) + '/' + fmt(cap);
+      const num = fmt(cur);
       let nfs = 12;
       font(nfs, true);
       while (nfs > 9 && ctx.measureText(num).width > cellW - 4) { nfs--; font(nfs, true); }
@@ -126,8 +126,10 @@ function renderGame() {
     ctx.restore();
     if (!busy) {
       // 战斗节点命中框略小：给周围的新资源点让出点击区域
+      // 战斗节点（站立怪）形体在原点上方：命中框上多下少，避免下方框体盖住下方资源点（如树精吞掉煤矿的点击）
       const hr = Math.max(n.r, 44) * (n.action === 'battle' ? 1.2 : 1.4);
-      reg(n.x - hr, n.y - hr, hr * 2, hr * 2 + 14, () => {
+      const bh = n.action === 'battle' ? [hr * 1.1, hr * 0.5] : [hr, hr + 14];
+      reg(n.x - hr, n.y - bh[0], hr * 2, bh[0] + bh[1], () => {
         if (n.action === 'battle') startBattle(n.id);
         else doGather(n);
       });
@@ -219,6 +221,8 @@ function renderGame() {
 
   // 属性条
   drawStatsStrip(8, 560, GAME_W - 16, 116);
+  // 血条右侧的攻防/槽位预览区整块可点：直接打开装备面板（与底部「装备」按钮同效）
+  if (!busy && !dialog.active && !battle.active) reg(318, 560, GAME_W - 318 - 8, 116, () => { panelOpen = 'equip'; });
 
   // 底部按钮：建筑 / 装备 / 制作 / 任务 / 菜单（教程引导或任务可提交时，按钮起跳 + 感叹号引导）
   // 建筑入口在主线全部完成后才出现
@@ -421,7 +425,7 @@ function drawStatsStrip(x, y, w, h) {
     drawBarRow(x + 18, by, 226, r.bh, r.label, r.ratio, r.color, r.text);
     by += r.bh + gap;
   }
-  // 右侧：攻防 + 食物槽，同样垂直居中
+  // 右侧：攻防 + 食物槽，同样垂直居中（点击打开装备面板的命中区在 drawGame 里注册，busy 是那边的局部变量）
   const rx = x + 318;
   const rightH = 20 + 12 + 40;
   let ry = y + (h - rightH) / 2;

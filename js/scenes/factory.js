@@ -72,7 +72,16 @@ function drawRateChips(x, yTop, chips, maxW) {
 // 打开指派弹窗：列出资源点/配方 + 关机；点选即生效
 function openAssign(gi) {
   const b = state.builds[gi];
-  if (!b || !BUILDINGS[b.t].use) return;
+  if (!b) return;
+  const def = BUILDINGS[b.t];
+  const isFuelGen = def.burn && !def.time; // 多燃料发电机：选烧哪种燃料（null = 自动）
+  if (!def.use && !isFuelGen) return;
+  if (isFuelGen) {
+    const opts = [{ v: null, label: t('factory.fuelAuto') }];
+    for (const k in def.burn) opts.push({ v: k, label: t('item.' + k + '.name') + ' · ' + def.burn[k] + 's' });
+    assignPick = { gi, title: t('factory.bld.' + b.t + '.name'), cur: b.fuel || null, opts };
+    return;
+  }
   const opts = [{ v: null, label: t('factory.off') }];
   if (b.t === 'harvester') {
     const seen = {}; // 类型内出现序号：同类型第 2 个点起显示 ·2/·3（与被占用跳过无关）
@@ -97,6 +106,8 @@ function openAssign(gi) {
 function applyAssign(gi, v) {
   const b = state.builds[gi];
   if (!b) { assignPick = null; return; }
+  const fdef = BUILDINGS[b.t];
+  if (fdef.burn && !fdef.time) { b.fuel = v; assignPick = null; markDirty(); return; } // 换燃料不打断当前燃烧
   if (b.t === 'harvester') b.node = v;
   else b.recipe = v;
   b.busy = 0; // 换任务后重新开始一轮
@@ -106,7 +117,15 @@ function applyAssign(gi, v) {
 // 点行直接切换任务：在「关机 → 各选项」序列里循环到下一个（顺序与弹窗一致）
 function cycleAssign(gi) {
   const b = state.builds[gi];
-  if (!b || !BUILDINGS[b.t].use) return;
+  if (!b) return;
+  const cdef = BUILDINGS[b.t];
+  if (cdef.burn && !cdef.time) { // 多燃料发电机：自动 → 树叶 → 木材 → 生物质 循环
+    const fuels = Object.keys(cdef.burn);
+    const cur = fuels.indexOf(b.fuel);
+    applyAssign(gi, fuels[(cur + 1) % (fuels.length + 1)] || null);
+    return;
+  }
+  if (!cdef.use) return;
   const vals = [null];
   if (b.t === 'harvester') {
     // 资源点独占：轮换序列跳过已被其他采集站占用的点（当前值不在序列时从关机档开始）
@@ -138,7 +157,7 @@ function drawFactoryPanel() {
   y += 44;
   // ---- 地图信息框：建筑条 / 应力条 / 电力条（与血条同款：左标签 + 彩条 + 条内数据）/ 资源点 ----
   const supply = stressSupply(), demand = stressDemand(), over = stressOver();
-  const power = powerSupply(), total = supply + power; // 电力与应力等效共池：需求由合计供给结算
+  const power = powerSupply(); // 电力与应力独立结算：生产建筑只吃应力，电力留给后续电气设备
   const hasStress = supply > 0; // 应力供给为 0（没建水车、也没蓄能）时，整条应力统计不显示
   const hasPower = power > 0;   // 电力供给为 0（没建发电机或没燃料）时，整条电力统计不显示
   const BH = 24 * (1 + (hasStress ? 1 : 0) + (hasPower ? 1 : 0)) + (over ? 24 : 0) + 58;
@@ -152,15 +171,15 @@ function drawFactoryPanel() {
     Math.min(1, mapBlds.length / MAX_BUILDS), '#c9a86a',
     mapBlds.length + '/' + MAX_BUILDS);
   by += 24;
-  // 应力条：运转中需求 / 总供给（应力+电力合并，如 36/48）；过载变红；无供给时整行隐藏
+  // 应力条：运转中需求 / 应力供给（如 36/48）；过载变红；无供给时整行隐藏
   if (hasStress) {
     drawBarRow(c.x + pad, by, barW, 18, t('factory.stress'),
-      Math.min(1, total ? demand / total : 0), over ? '#e05a4e' : '#7fb069',
-      demand + '/' + Math.round(total)); // 风力加成会产生小数，取整显示
+      Math.min(1, supply ? demand / supply : 0), over ? '#e05a4e' : '#7fb069',
+      demand + '/' + Math.round(supply)); // 风力加成会产生小数，取整显示
     drawIcon('stress', c.x + pad + 38, by + 9, 14); // 闪电图标：紧贴「应力」label 之后、条之前
     by += 24;
   }
-  // 电力条：燃烧发电（蒸汽机/生物质发电机）的供电 MW，条长 = 电力占总供给的比例
+  // 电力条：生物质发电机的供电 MW（蒸汽机出应力，已计入应力条），条长 = 电力占总供给的比例
   if (hasPower) {
     drawBarRow(c.x + pad, by, barW, 18, t('factory.power'),
       Math.min(1, total ? power / total : 0), '#4f8fd0',
@@ -203,22 +222,26 @@ function drawFactoryPanel() {
     const owned = list.length;
     const isCrank = bt === 'hand_crank';
     // 组总和芯片内容（画卡前先算好，行数进卡高）；摇杆的实时蓄能显示在下方建筑行
-    // 发电类显示总供电（未建时预览单台值）；采集/制造类汇总全部在产机器的每分钟产出，待命耗电单列一条
+    // 产出/消耗统一格式：未建显示单台值 +「·单台」；已建显示 单台(合计)，如 -6(24) SU/分钟、+18(36) SU/分钟
     const perMin = t('factory.perMin');
     const fmtV = v => fmtRate(Math.round(v * 10) / 10);
+    const rate = (per, total, unit, icon, color) => {
+      const body = owned > 0 ? '+' + fmtV(per) + '(' + fmtV(total) + ')' + unit : '+' + fmtV(per) + unit + ' · ' + t('factory.perUnit');
+      chips.push({ icon, label: body, color });
+    };
     const chips = [];
     if (!isCrank) {
       if (bt === 'warehouse') {
         // 仓库：静置加成，无任务无耗电
         chips.push({ icon: bt, label: '+' + (def.storage || 30) + ' ' + t('factory.storageUnit'), color: '#7fb069' });
       } else if (bt === 'wind_turbine') {
-        chips.push({ icon: 'stress', label: '+' + fmtV(owned ? windStress() : def.gen) + perMin, color: '#d99a2b' });
+        rate(def.gen, windStress(), ' SU' + perMin, 'stress', '#d99a2b'); // 风力合计带群体加成
       } else if (def.burn && def.gen) {
-        // 燃烧发电：只统计燃着的机器（MW），断燃料即熄火
+        // 燃烧类：蒸汽机（def.time）出应力、生物质发电机出电力；产出与燃料种类无关，合计只算燃着的台数
         const lit = list.filter(b => b.burnLeft > 0).length;
-        chips.push({ icon: 'power', label: '+' + (lit * def.gen) + ' MW', color: '#4f8fd0' });
+        rate(def.gen, lit * def.gen, def.time ? ' SU' + perMin : ' MW' + perMin, def.time ? 'stress' : 'power', def.time ? '#d99a2b' : '#4f8fd0');
       } else if (def.gen) {
-        chips.push({ icon: 'stress', label: '+' + (owned * def.gen) + perMin, color: '#d99a2b' });
+        rate(def.gen, owned * def.gen, ' SU' + perMin, 'stress', '#d99a2b');
       } else {
         const rateMap = {};
         list.forEach(b => {
@@ -235,9 +258,11 @@ function drawFactoryPanel() {
           (outs || []).forEach(o => { rateMap[o.id] = (rateMap[o.id] || 0) + o.rate; });
         });
         for (const id in rateMap) chips.push({ icon: id, label: '+' + fmtV(rateMap[id]) + perMin, color: '#7fb069' });
-        // 待命耗电（与 stressDemand 同口径：执行中或随时可开工的机器才算）
+        // 应力消耗（与 stressDemand 同口径：执行中或随时可开工的机器才算），格式同产出：-6(24) SU/分钟
         const drain = list.filter(b => b.busy > 0 || stationJobReady(b)).length * def.use;
-        if (drain) chips.push({ icon: 'stress', label: '-' + drain + perMin, color: '#b5764a' });
+        const drainBody = owned > 0 ? '-' + (def.use || 0) + '(' + fmtV(drain) + ') SU' + perMin
+          : '-' + (def.use || 0) + ' SU' + perMin + ' · ' + t('factory.perUnit');
+        chips.push({ icon: 'stress', label: drainBody, color: '#b5764a' });
       }
     }
     // 组头：图标 + 名称×数量 + 总和芯片 + 造价 + 动作按钮 + 卡内说明
@@ -276,8 +301,12 @@ function drawFactoryPanel() {
     const crankBuilt = isCrank && owned;
     if (def.locked || crankBuilt) { label = null; act = null; disabled = true; } // 组头不放按钮，操作在建筑行
     else if (maxed) { label = t('factory.built'); act = () => {}; disabled = true; }
-    else { label = t('factory.build'); act = () => buildFactory(bt); disabled = !canBuildFactory(bt); }
-    if (label && cardVis) uiButton(c.x + c.w - 76, y + (CH - 32) / 2, 66, 32, label, act, { kind: 'primary', size: 13, disabled });
+    else {
+      label = t('factory.build'); act = () => buildFactory(bt); disabled = !canBuildFactory(bt);
+      // 限定地图而不可建：按钮直接显示原因（如蒸汽机「需要水」），别让玩家对着灰按钮猜
+      if (disabled && def.map && state.map !== def.map) { label = def.mapWhy ? t('factory.mapWhy.' + def.mapWhy) : t('map.' + def.map); }
+    }
+    if (label && cardVis) uiButton(c.x + c.w - 76, y + (CH - 32) / 2, 66, 32, label, act, { kind: 'primary', size: disabled && label !== t('factory.build') ? 12 : 13, disabled });
     y += CH + 6;
     // 组内成员：每台一行，右上角拆除；行点击轮换该台任务（含关机档）
     // 同种造太多时页面被拉得极长：默认只显示前 3 行，其余收进展开条
@@ -297,13 +326,21 @@ function drawFactoryPanel() {
           jobText = '+' + (def.storage || 30) + ' ' + t('factory.storageUnit');
           pct = 1;
         } else if (def.burn && def.gen) {
-          // 燃烧发电：燃着显示 MW + 本轮剩余秒数；燃尽自动续烧，没燃料才熄火
-          jobText = b.burnLeft > 0 ? '+' + def.gen + ' MW · ' + Math.ceil(b.burnLeft) + 's' : t('factory.needFuel');
-          pct = b.burnLeft > 0 ? Math.min(1, b.burnLeft / (def.time || def.burn.biomass || 40)) : 0;
-          barColor = '#4f8fd0';
+          // 燃烧类：蒸汽机出应力（橙）、生物质发电机出电力（蓝）；产出与燃料无关，显示本轮剩余秒数
+          // 进度条按本轮实际燃料的燃烧时长归一化（curFuel 在 burnTick 点火时记录），从满格开始走
+          const fuelDur = def.time || def.burn[b.curFuel] || 40;
+          const fuelName = def.time ? '' : (b.fuel ? t('item.' + b.fuel + '.name') : t('factory.fuelAuto').split(/[（(]/)[0]) + ' · ';
+          if (def.time) {
+            jobText = b.burnLeft > 0 ? '+' + def.gen + ' SU' + t('factory.perMin') + ' · ' + Math.ceil(b.burnLeft) + 's' : t('factory.needFuel');
+            barColor = '#d99a2b';
+          } else {
+            jobText = fuelName + (b.burnLeft > 0 ? '+' + def.gen + ' MW' + t('factory.perMin') + ' · ' + Math.ceil(b.burnLeft) + 's' : t('factory.needFuel'));
+            barColor = '#4f8fd0';
+          }
+          pct = b.burnLeft > 0 ? Math.min(1, b.burnLeft / fuelDur) : 0;
         } else {
           // 水车/风力机这类常驻发电：永远满状态条（风力机的群体加成在组头信息行展示）
-          jobText = '+' + def.gen + t('factory.stress') + t('factory.perMin');
+          jobText = '+' + def.gen + ' SU' + t('factory.perMin');
           pct = 1;
         }
       } else if (b.t === 'harvester') {
@@ -378,12 +415,12 @@ function drawFactoryPanel() {
       // 行内操作：点行任意处 = 直接切换任务；按钮 = 弹窗指派（摇杆=手摇，其余=选择）
       const sc2 = c.key ? (PANEL_SCROLLS[c.key] || 0) : 0;
       const rowVis = y + rowH > c.y + sc2 && y < c.y + c.h + sc2 + 6; // 滚出可视区：不画按钮、不注册命中（含滚动偏移）
-      if (!busyPanel() && rowVis && def.use) reg(c.x + 10, y, c.w - 10, rowH, () => cycleAssign(gi)); // 整行可点切换，先注册让按钮/拆除优先命中
+      if (!busyPanel() && rowVis && (def.use || (def.burn && !def.time))) reg(c.x + 10, y, c.w - 10, rowH, () => cycleAssign(gi)); // 整行可点切换，先注册让按钮/拆除优先命中
       // 按钮锚定行顶部（y+23），与下方产出卡完全错开
       const midY = y + 23;
       if (isCrankRow) {
         if (rowVis) uiButton(c.x + c.w - 128, y + 5, 66, 28, t('factory.crank'), crankClick, { kind: 'primary', size: 13 });
-      } else if (def.use) {
+      } else if (def.use || (def.burn && !def.time)) {
         if (rowVis && !busyPanel()) uiButton(c.x + c.w - 128, midY - 14, 66, 28, t('factory.assign'), () => openAssign(gi), { kind: 'primary', size: 13 });
       }
       ctx.fillStyle = '#f3ede0'; rr(c.x + c.w - 42, midY - 15, 30, 30, 8); ctx.fill();

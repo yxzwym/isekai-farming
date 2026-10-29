@@ -8,7 +8,7 @@
 // 这里只放 id 与数值。
 // ============================================================
 
-const VERSION = '0.0.1';
+const VERSION = '1.0.0';
 const GAME_W = 480, GAME_H = 800;
 const SAVE_KEY = 'isekai-farming-save-v11';
 const SETTINGS_KEY = 'isekai-farming-settings-v1';

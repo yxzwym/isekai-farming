@@ -35,6 +35,7 @@ function defaultState() {
     stamina: STAMINA.max,
     foodSlots: [null, null, null],
     potionSlots: [null, null, null],      // 药水槽 ×3（装备面板位于食物槽下、药物槽上，逻辑同食物，仅可装药水）
+    potionSeen: false,                    // 曾拥有过药水：装备面板的药水段自此常显
     counters: {
       gather: { berry: 0, wood: 0, stone: 0, ore: 0, copper_ore: 0, coal: 0, blueberry: 0, carrot: 0, limestone: 0 },
       craft: { cooked_rabbit: 0, cooked_pork: 0, wood_axe: 0, wood_sword: 0, stone_axe: 0, stone_sword: 0, leather_armor: 0, horn_pick: 0, smelt: 0, charcoal: 0, steel_smelt: 0, steel_sword: 0, steel_armor: 0, cooked_beef: 0, mushroom_stew: 0, ancestor_wisdom: 0, concrete: 0, biomass: 0 },
@@ -110,6 +111,37 @@ function saveState() {
   try { localStorage.setItem(SAVE_KEY, JSON.stringify(state)); } catch (e) {}
   dirty = false;
   lastSaveAt = performance.now();
+}
+// ===== 存档导入导出：下载成 JSON 文件 / 从文件恢复（换设备、备份、多存档轮换用） =====
+function exportSave() {
+  let raw = null;
+  try { if (state) saveState(); raw = localStorage.getItem(SAVE_KEY); } catch (e) {}
+  if (!raw) { toast(t('ui.noSave'), '#ff9c8a'); return; }
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([raw], { type: 'application/json' }));
+  const d = new Date(), p = n => (n < 10 ? '0' : '') + n;
+  a.download = 'isekai-save-' + d.getFullYear() + p(d.getMonth() + 1) + p(d.getDate()) + '-' + p(d.getHours()) + p(d.getMinutes()) + '.json';
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+  toast(t('ui.exported'), '#ffd479');
+}
+function importSaveFile() {
+  const inp = document.createElement('input');
+  inp.type = 'file'; inp.accept = '.json,application/json';
+  inp.onchange = () => {
+    const f = inp.files && inp.files[0];
+    if (!f) return;
+    f.text().then(txt => {
+      let s;
+      try { s = JSON.parse(txt); } catch (e) { s = null; }
+      // 轻校验（像不像存档）：结构是否合法交给 loadState 的逐字段容错迁移
+      if (!s || typeof s !== 'object' || typeof s.inv !== 'object') { toast(t('ui.importBad'), '#ff9c8a'); return; }
+      try { localStorage.setItem(SAVE_KEY, JSON.stringify(s)); } catch (e) { toast(t('ui.importBad'), '#ff9c8a'); return; }
+      if (scene === 'game') { continueGame(); toast(t('ui.imported'), '#ffd479'); } // 游戏内导入：立即重载进新档
+      else toast(t('ui.imported'), '#ffd479'); // 主菜单导入：回「继续游戏」即可进入
+    });
+  };
+  inp.click();
 }
 function loadState() {
   try {

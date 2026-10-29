@@ -103,7 +103,7 @@ function renderMenu() {
   font(12, false);
   ctx.textAlign = 'left'; ctx.textBaseline = 'bottom';
   ctx.fillStyle = 'rgba(46,93,52,.75)';
-  ctx.fillText(t('ui.title') + ' ' + VERSION + ' · ' + t('ui.chapter'), 12, GAME_H - 10);
+  ctx.fillText(t('ui.title') + ' ' + VERSION, 12, GAME_H - 10); // v1.0.0：版本号不带章节名
 
   // 右下角：清除缓存（低调入口，两段式确认）
   font(10, false);
@@ -143,7 +143,7 @@ function drawNewGamePanel() {
 
 // ===== 设置面板（主菜单 / 游戏内共用） =====
 function drawSettingsContent() {
-  const c = drawPanelBase(t('panel.settings'));
+  const c = drawPanelBase(t('panel.settings'), 'settings'); // 内容超出一屏，可滚动
   let y = c.y + 10;
   // 游戏内打开：返回游戏 / 保存并回到主菜单（主菜单打开时无需这两项）
   if (scene === 'game') {
@@ -195,6 +195,11 @@ function drawSettingsContent() {
   });
   y += 70;
   y += drawWrapped(t('settings.saveNote'), c.x, y, c.w, 22, '#8a8171', 13, false) + 16;
+  // 存档导入导出：下载 = 当前存档存成 JSON 文件；上传 = 选文件恢复（游戏内立即重载，主菜单回「继续游戏」）
+  const ebw = (c.w - 8) / 2;
+  uiButton(c.x, y, ebw, 52, t('settings.exportSave'), exportSave, { kind: 'ghost', size: 16, disabled: !hasSave() && !state });
+  uiButton(c.x + ebw + 8, y, ebw, 52, t('settings.importSave'), importSaveFile, { kind: 'ghost', size: 16 });
+  y += 68;
   uiButton(c.x, y, c.w, 52, armDelete.armed ? t('settings.deleteConfirm') : t('settings.delete'), () => {
     if (!hasSave()) return;
     if (!armDelete.armed) {
@@ -215,6 +220,7 @@ function drawSettingsContent() {
   ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
   ctx.fillText(tf('settings.about', { v: VERSION }), c.x, y + 12);
   y += 28;
+  endPanel('settings', y + 8);
 }
 
 // ===== 物品栏显示设置 =====

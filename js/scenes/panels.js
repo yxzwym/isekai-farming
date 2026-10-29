@@ -12,7 +12,9 @@ let craftCat = 'cook';               // 制作面板当前分栏
 const cheatPick = { id: null };         // 物品增删区：当前选中的物品
 const CHEAT_ITEMS = Object.keys(ITEMS); // 物品网格展示顺序（与 data.js 定义序一致）
 function drawCheatPanel() {
-  const c = drawPanelBase('作弊面板');
+  const c = drawPanelBase('作弊面板', 'cheat'); // 内容超长可滚动（物品网格会随物品增多变高）
+  const sc = c.key ? (PANEL_SCROLLS[c.key] || 0) : 0;
+  const rowVis = (y0, h) => y0 + h > c.y + sc && y0 < c.y + c.h + sc + 6; // 滚出可视区的按钮/格子不注册命中
   let y = c.y + 2;
   const bw = (c.w - 10) / 2, bh = 40;
   const row = (a, b) => {
@@ -36,8 +38,8 @@ function drawCheatPanel() {
     { label: '每种建筑 +1', cb: cheatBuildAll },
     { label: '移除所有物品', cb: cheatClearItems, o: { kind: 'danger', size: 15 } }
   );
-  // 清档不可逆：两段确认，与删档按钮同一交互模式；占满整行
-  uiButton(c.x, y, c.w, bh,
+  // 清档不可逆：两段确认，与删档按钮同一交互模式；占满整行（滚出可视区不注册命中）
+  if (rowVis(y, bh)) uiButton(c.x, y, c.w, bh,
     armWipe.armed ? '再点一次确认清档' : '清档重开',
     () => {
       if (!armWipe.armed) { armWipe.armed = true; toast('再点一次确认：清空存档并重开', '#ffc966'); return; }
@@ -59,7 +61,7 @@ function drawCheatPanel() {
     ctx.fillText('已选：' + t('item.' + cheatPick.id + '.name'), c.x + c.w, y + 8);
   }
   y += 20;
-  const gs = 36, gap = 5, cols = 6;
+  const gs = 36, gap = 5, cols = 9; // 9 列铺满面板宽（428 - 44 内边距），不再左右留白
   const gx0 = c.x + (c.w - (cols * gs + (cols - 1) * gap)) / 2;
   CHEAT_ITEMS.forEach((id, i) => {
     const gx = gx0 + (i % cols) * (gs + gap);
@@ -71,19 +73,22 @@ function drawCheatPanel() {
     ctx.lineWidth = sel ? 2 : 1;
     rr(gx, gy, gs, gs, 8); ctx.stroke();
     drawIconCounted(id, gx + gs / 2, gy + gs / 2, 20, state.inv[id] || 0);
-    reg(gx, gy, gs, gs, () => { cheatPick.id = id; });
+    if (rowVis(gy, gs)) reg(gx, gy, gs, gs, () => { cheatPick.id = id; });
   });
   y += Math.ceil(CHEAT_ITEMS.length / cols) * (gs + gap) + 4;
   const qw = (c.w - 3 * 8) / 4;
   const noPick = !cheatPick.id;
-  uiButton(c.x, y, qw, 40, '+1', noPick ? null : () => cheatGiveItem(cheatPick.id, 1), { disabled: noPick, size: 15 });
-  uiButton(c.x + qw + 8, y, qw, 40, '+10', noPick ? null : () => cheatGiveItem(cheatPick.id, 10), { disabled: noPick, size: 15 });
-  uiButton(c.x + (qw + 8) * 2, y, qw, 40, '+100', noPick ? null : () => cheatGiveItem(cheatPick.id, 100), { disabled: noPick, size: 15 });
-  uiButton(c.x + (qw + 8) * 3, y, qw, 40, '清零', noPick ? null : () => {
-    state.inv[cheatPick.id] = 0;
-    markDirty();
-    toast(t('item.' + cheatPick.id + '.name') + ' 已清零', '#ffd479');
-  }, { disabled: noPick, kind: 'danger', size: 15 });
+  if (rowVis(y, 40)) {
+    uiButton(c.x, y, qw, 40, '+1', noPick ? null : () => cheatGiveItem(cheatPick.id, 1), { disabled: noPick, size: 15 });
+    uiButton(c.x + qw + 8, y, qw, 40, '+10', noPick ? null : () => cheatGiveItem(cheatPick.id, 10), { disabled: noPick, size: 15 });
+    uiButton(c.x + (qw + 8) * 2, y, qw, 40, '+100', noPick ? null : () => cheatGiveItem(cheatPick.id, 100), { disabled: noPick, size: 15 });
+    uiButton(c.x + (qw + 8) * 3, y, qw, 40, '清零', noPick ? null : () => {
+      state.inv[cheatPick.id] = 0;
+      markDirty();
+      toast(t('item.' + cheatPick.id + '.name') + ' 已清零', '#ffd479');
+    }, { disabled: noPick, kind: 'danger', size: 15 });
+  }
+  endPanel('cheat', y + 48); // 报备内容底部：超出可视区就出滚动条
 }
 
 function drawQuestPanel() {
@@ -234,6 +239,12 @@ function drawEquipPanel() {
     y += 6;
   }
   // ---- 2.5 药水槽（食物槽之下、药物槽之上；仅 POTIONS 可装，逻辑与食物同构） ----
+  // 从未拥有过药水就整段隐藏（槽位+列表都不出）：前期用不上，别占面板；
+  // 一旦拥有过（potionSeen 记号，进存档）就常显——药水用光了也不藏，免得段落忽隐忽现
+  const hasPotion = state.potionSeen || state.potionSlots.some(p => p)
+    || Object.keys(POTIONS).some(id => (state.inv[id] || 0) > 0);
+  if (hasPotion) state.potionSeen = true;
+  if (hasPotion) {
   ctx.fillStyle = '#5a5344'; font(16, true);
   ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
   ctx.fillText(t('equip.potions'), c.x, y + 12);
@@ -277,12 +288,8 @@ function drawEquipPanel() {
       y += 54;
     }
     y += 6;
-  } else {
-    font(12, false); ctx.fillStyle = '#a89f8c';
-    ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
-    ctx.fillText(t('equip.nothingPotion'), c.x, y + 12);
-    y += 28;
   }
+  } // hasPotion：整段药水区结束
   // ---- 3. 药物槽 ----
   ctx.fillStyle = '#5a5344'; font(16, true);
   ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
