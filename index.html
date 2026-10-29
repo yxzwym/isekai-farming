@@ -5,7 +5,12 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <title>异世界种田</title>
-<link rel="stylesheet" href="css/style.css">
+<link id="styleCss" rel="stylesheet" href="css/style.css">
+<script>
+// css 同样带时间戳：GitHub Pages 的 max-age=600 内拿到的也可能不是最新，统一在这里破缓存
+// （顺便兜底 no-cache 提示；index.html 本身 GH Pages 只缓存 10 分钟，之后必然拿到新版）
+document.getElementById('styleCss').href = 'css/style.css?v=' + Date.now();
+</script>
 </head>
 <body>
 <canvas id="game"></canvas>
