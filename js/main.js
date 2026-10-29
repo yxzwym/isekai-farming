@@ -22,7 +22,7 @@ window.addEventListener('resize', resize);
 window.addEventListener('orientationchange', resize);
 
 // ===== 输入：按下→移动（面板滚动）→抬起（未拖拽则视为点击） =====
-const pointer = { down: false, x: 0, y: 0, startX: 0, startY: 0, dragged: false };
+const pointer = { down: false, x: 0, y: 0, startX: 0, startY: 0, dragged: false, thumbKey: null, thumbGrab: 0 };
 
 function toLogical(e) {
   const r = canvas.getBoundingClientRect();
@@ -47,6 +47,9 @@ canvas.addEventListener('pointerdown', (e) => {
   pointer.x = pointer.startX = p.x;
   pointer.y = pointer.startY = p.y;
   pointer.downAt = performance.now();
+  // 按在滚动条滑块上：进入滑块拖动模式（不走内容滑动逻辑）；弹窗打开时不启用
+  pointer.thumbKey = !modalOpen() ? scrollThumbAt(p.x, p.y) : null;
+  pointer.thumbGrab = pointer.thumbKey ? p.y - PANEL_SCROLL_META[pointer.thumbKey].barY : 0;
   // 按在采集节点上：常驻自动采集中则先取消（这次点击不采集），否则进入长按计时
   const gNode = typeof gatherNodeAt === 'function' ? gatherNodeAt(p.x, p.y) : null;
   if (gNode) {
@@ -71,7 +74,14 @@ canvas.addEventListener('pointermove', (e) => {
   if (pointer.dragged) {
     stopHoldGather(); // 拖拽取消长按
     pointer.downTag = null;
-    if (!modalOpen()) {
+    if (pointer.thumbKey) {
+      // 拖滚动条滑块：滑块行程与内容滚动按比例映射（拖到底=滚到底，拇指位置=当前视口）
+      const m = PANEL_SCROLL_META[pointer.thumbKey];
+      if (m && m.max > 0 && m.trackH > m.barH) {
+        const by = Math.max(m.trackTop, Math.min(m.trackTop + m.trackH - m.barH, p.y - pointer.thumbGrab));
+        PANEL_SCROLLS[pointer.thumbKey] = Math.max(0, Math.min(m.max, (by - m.trackTop) * m.max / (m.trackH - m.barH)));
+      }
+    } else if (!modalOpen()) {
       const scrollKey = panelScrollAt(pointer.startX, pointer.startY);
       if (scrollKey) scrollPanelBy(scrollKey, -dy); // 弹窗打开时吞掉拖动，不穿透滚动底层面板
     }
@@ -85,6 +95,7 @@ canvas.addEventListener('pointermove', (e) => {
 canvas.addEventListener('pointerup', (e) => {
   if (!pointer.down) return;
   pointer.down = false;
+  pointer.thumbKey = null; // 滑块拖动结束，恢复常规输入
   const wasAutoGather = autoGather.enabled; // 长按已开启自动采集：松手不算点击，也不取消
   stopHoldGather();
   const held = performance.now() - (pointer.downAt || 0);
@@ -96,8 +107,15 @@ canvas.addEventListener('pointerup', (e) => {
   const p = toLogical(e);
   onTap(p.x, p.y);
 });
-canvas.addEventListener('pointercancel', () => { pointer.down = false; });
+canvas.addEventListener('pointercancel', () => { pointer.down = false; pointer.thumbKey = null; });
 canvas.addEventListener('contextmenu', (e) => e.preventDefault());
+// 桌面端滚轮：滚动鼠标所在的弹窗/面板内容区（移动端走拖拽滚动）
+canvas.addEventListener('wheel', (e) => {
+  e.preventDefault();
+  const p = toLogical(e);
+  const scrollKey = panelScrollAt(p.x, p.y);
+  if (scrollKey) scrollPanelBy(scrollKey, e.deltaY);
+}, { passive: false });
 
 // ===== 点击命中：后注册者优先；点面板外关闭面板；对话中推进对话 =====
 function onTap(x, y) {
@@ -181,6 +199,7 @@ setInterval(() => {
 }, 1000);
 
 function renderFrame() {
+  beginUiFrame(); // 滚动区每帧重注册（panelScrollAt 只认本帧画过的区域）
   hits = [];
   ctx.setTransform(viewScale, 0, 0, viewScale, 0, 0);
   ctx.clearRect(0, 0, GAME_W, GAME_H);

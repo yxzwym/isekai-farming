@@ -13,7 +13,14 @@
 <script>
 // 开发期：资源地址带时间戳，避免浏览器缓存旧文件
 (function () {
-  var files = ['js/i18n.js', 'js/lang/zh-CN.js', 'js/lang/en-US.js', 'js/data.js', 'js/game.js', 'js/ui.js', 'js/scenes.js', 'js/main.js'];
+  var files = [
+    'js/i18n.js', 'js/lang/zh-CN.js', 'js/lang/en-US.js',
+    'js/data/config.js', 'js/data/items.js', 'js/data/world.js',
+    'js/game/state.js', 'js/game/vitals.js', 'js/game/actions.js', 'js/game/factory.js', 'js/game/battle.js', 'js/game/quest.js', 'js/game/dialog.js', 'js/game/cheat.js',
+    'js/ui.js',
+    'js/scenes/nodes.js', 'js/scenes/enemies.js', 'js/scenes/menu.js', 'js/scenes/field.js', 'js/scenes/panels.js', 'js/scenes/battle.js', 'js/scenes/factory.js',
+    'js/main.js',
+  ];
   for (var i = 0; i < files.length; i++) {
     document.write('<script src="' + files[i] + '?v=' + Date.now() + '"></scr' + 'ipt>');
   }
