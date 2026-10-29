@@ -38,7 +38,8 @@ function drawBattle() {
     Math.max(0, battle.ehp) / e.hp, '#e05a4e',
     Math.max(0, battle.ehp) + ' / ' + e.hp);
   drawBarRow(ix, py + 264, barW, 12, t('stat.stam'),
-    e.stam ? 1 : 0, '#e0a53f', e.stam + ' / ' + e.stam);
+    e.stam ? battle.estam / e.stam : 0, '#e0a53f',
+    Math.max(0, Math.ceil(battle.estam)) + ' / ' + e.stam); // 敌人耐力池实时余量（每次反击 -10，耗尽后反击减半）
   // 敌人属性格：火焰系/带毒敌人在开打前就把特殊伤害亮出来，玩家可据此备药备装
   const eChips = [
     [t('stat.atkFull'), e.atk],

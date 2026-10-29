@@ -63,8 +63,8 @@ function playerAttack() {
   if (!battle.active || battle.phase !== 'fight') return;
   const e = ENEMIES[battle.id];
   const tired = state.stamina < STAMINA.cost;
-  let d = Math.max(1, atkVal() - e.def);
-  if (tired) d = Math.max(1, Math.floor(d / 2));
+  let d = Math.max(0, atkVal() - e.def); // 不破防就 0 伤害（耐久照扣）；蓄力不足减半但不保底
+  if (tired) d = Math.max(0, Math.floor(d / 2));
   state.stamina = Math.max(0, state.stamina - STAMINA.cost);
   battle.ehp -= d;
   nodeAnim[battle.id] = 1;
@@ -79,8 +79,8 @@ function playerAttack() {
 function enemyCounter() {
   const e = ENEMIES[battle.id];
   const etired = battle.estam < STAMINA.cost;
-  let back = Math.max(1, e.atk - defVal());
-  if (etired) back = Math.max(1, Math.floor(back / 2));
+  let back = Math.max(0, e.atk - defVal()); // 敌人同样：不破防 0 伤害
+  if (etired) back = Math.max(0, Math.floor(back / 2));
   battle.estam = Math.max(0, battle.estam - STAMINA.cost);
   battle.php -= back;
   battle.pflash = 0.35;
